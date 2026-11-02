@@ -1,4 +1,4 @@
-import {readSnapshot, addDays, bangkokToday, HOUSE_TYPES, teamOverview} from './data.js';
+import {readSnapshot, projectProgress, bangkokToday, HOUSE_TYPES, teamOverview} from './data.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text, cls) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; };
 const number = n => n.toLocaleString('th-TH');
@@ -31,25 +31,39 @@ function progressCard(label, count, target, note, milestoneStep = 0) {
 }
 function renderKpis() {
   const out = $('kpis'); out.replaceChildren();
+  const summary=state?projectProgress(state.surveys,config?.monthOne?.startDate):null;
   for (const g of [...(config?.groups || fallbackGroups)].sort((a,b)=>(a.id==='4900'?-1:1)-(b.id==='4900'?-1:1))) {
-    const count = state ? state.surveys.filter(s => s.group === g.id).length : null;
+    const count = summary ? summary.totals[g.id] : null;
     const note = g.id === '4200'
       ? 'ขีดเป้ารายเดือนสะสมทุก 600 ชุด · 7 เดือน รวม 4,200 ชุด'
       : 'เป้าโทรติดตาม 700 ชุดต่อเดือน · 7 เดือน รวม 4,900 ชุด';
     const title=g.id==='4900'?'โทรติดตามฐานเดิม':g.label;
     const card=progressCard(title,count,g.target,state ? note : `${note} · รอข้อมูลจากชีต`,g.id==='4900'?700:600);card.dataset.group=g.id;out.append(card);
   }
-  renderMonthlyTargets(out);
+  renderMonthlyTargets(out,summary);
 }
 let selectedTargetMonth=1;
-function renderMonthlyTargets(out){
-  const box=el('article',undefined,'monthly-panel');const head=el('div',undefined,'monthly-heading');head.append(el('div','เป้าหมายการจัดเก็บรายเดือน','monthly-title'));const label=el('label','ดูรอบงาน '),select=el('select');select.id='targetMonth';select.setAttribute('aria-label','เดือนเป้าหมาย');for(let m=1;m<=7;m++)select.add(new Option(`เดือนที่ ${m}`,String(m)));select.value=String(selectedTargetMonth);select.addEventListener('change',e=>{selectedTargetMonth=+e.target.value;renderKpis();});label.append(select);head.append(label);box.append(head);
-  const first=config?.monthOne?.startDate,start=first?addDays(first,(selectedTargetMonth-1)*30):'',end=start?addDays(start,29):'';
-  box.append(el('p',start?`${displayDate(start)} – ${displayDate(end)} · รอบละ 30 วันตามแผน 210 วัน`:'รอยืนยันวันเริ่มโครงการ','monthly-period'));
+function renderMonthlyTargets(out,summary){
+  const box=el('article',undefined,'monthly-panel');const head=el('div',undefined,'monthly-heading');head.append(el('div','เป้าหมายรายเดือน · โทร 700 / ภาคสนาม 600 ชุด','monthly-title'),el('span','เลือกดูได้ครบ 7 เดือน','monthly-hint'));box.append(head);
+  const tabs=el('div',undefined,'month-tabs');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','เลือกเดือนเป้าหมาย');
+  for(let m=1;m<=7;m++){
+    const button=el('button',undefined,'month-tab');button.type='button';button.dataset.month=String(m);button.setAttribute('aria-pressed',String(selectedTargetMonth===m));button.append(el('strong',`เดือนที่ ${m}`));
+    const data=summary?.months[m-1];button.append(el('span',`โทร ${data?number(data.counts['4900']):'—'} / 700`),el('span',`พื้นที่ ${data?number(data.counts['4200']):'—'} / 600`));button.addEventListener('click',()=>{selectedTargetMonth=m;renderKpis();});tabs.append(button);
+  }box.append(tabs);
+  const month=summary?.months[selectedTargetMonth-1];
+  box.append(el('p',month?`เดือนที่ ${selectedTargetMonth} · ${displayDate(month.start)} – ${displayDate(month.end)} · ยอดเฉพาะรอบ 30 วันนี้`:`เดือนที่ ${selectedTargetMonth} · รอข้อมูลและวันเริ่มโครงการ`,'monthly-period'));
   const grid=el('div',undefined,'monthly-grid');for(const [group,title,target]of [['4900','โทรติดตามฐานเดิม',700],['4200','สำรวจภาคสนาม',600]]){
-    const count=state&&start?state.surveys.filter(s=>s.group===group&&s.date>=start&&s.date<=end).length:null;
-    const card=progressCard(title,count,target,count===null?'รอข้อมูลรายเดือน':count>=target?'ถึงเป้าหมายรายเดือนแล้ว':`เหลืออีก ${number(target-count)} ชุดเพื่อถึงเป้ารอบนี้`);card.dataset.group=group;grid.append(card);
-  }box.append(grid);out.append(box);
+    const count=month?month.counts[group]:null;
+    const card=progressCard(`${title} · เดือน ${selectedTargetMonth}`,count,target,count===null?'รอข้อมูลรายเดือน':count>=target?'ถึงเป้าหมายรายเดือนแล้ว':`เดือนนี้ยังขาด ${number(target-count)} ชุด`);card.dataset.group=group;
+    if(month)card.append(el('p',`สะสมเดือน 1–${selectedTargetMonth}: ${number(month.cumulative[group])} / ${number(target*selectedTargetMonth)} ชุด`,'cumulative-count'));grid.append(card);
+  }box.append(grid);
+  if(summary?.months.length){
+    const phone=summary.months.reduce((s,m)=>s+m.counts['4900'],0),field=summary.months.reduce((s,m)=>s+m.counts['4200'],0);
+    let text=`รวมยอดทั้ง 7 เดือน: โทร ${number(phone)} ชุด · ภาคสนาม ${number(field)} ชุด`;
+    if(summary.outside['4900']||summary.outside['4200'])text+=` · มีข้อมูลนอกช่วงแผน: โทร ${number(summary.outside['4900'])} / ภาคสนาม ${number(summary.outside['4200'])} ชุด (รวมอยู่ในบาร์ด้านบน)`;
+    else text+=' · ตรงกับยอดรวมบนบาร์ด้านบน';
+    box.append(el('p',text,'monthly-reconcile'));
+  }out.append(box);
 }
 function assignmentsFor(p) { return state?.assignments.filter(a => a.province === p) || []; }
 function featureStyle(feature) {

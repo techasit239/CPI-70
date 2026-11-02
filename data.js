@@ -115,6 +115,14 @@ export function teamOverview(state, team='', group=''){
   })};
 }
 export function monthOneCount(surveys, m) { if (!m.startDate || !m.endDate || !m.groupIds.length) return null; return surveys.filter(s => m.groupIds.includes(s.group) && s.date >= m.startDate && s.date <= m.endDate).length; }
+export function projectProgress(surveys, startDate){
+  const groups=['4900','4200'],totals=Object.fromEntries(groups.map(g=>[g,surveys.filter(s=>s.group===g).length]));
+  if(!startDate)return {totals,months:[],outside:totals};
+  dateOnly(startDate);const months=Array.from({length:7},(_,i)=>({month:i+1,start:addDays(startDate,i*30),end:addDays(startDate,i*30+29),counts:{'4900':0,'4200':0},targets:{'4900':700,'4200':600},cumulative:{'4900':0,'4200':0}}));
+  const outside={'4900':0,'4200':0};for(const s of surveys){if(!groups.includes(s.group))continue;const m=months.find(m=>s.date>=m.start&&s.date<=m.end);if(m)m.counts[s.group]++;else outside[s.group]++;}
+  const running={'4900':0,'4200':0};for(const month of months)for(const g of groups){running[g]+=month.counts[g];month.cumulative[g]=running[g];}
+  return {totals,months,outside};
+}
 export async function readSnapshot(config, names, fetcher = fetch) {
   validateConfig(config);
   const read = async url => {
