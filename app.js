@@ -6,16 +6,37 @@ const displayDate = s => s ? new Intl.DateTimeFormat('th-TH',{dateStyle:'medium'
 let config, names, state = null, lastSuccess = null, busy = false, map, layer, selectedProvince = '', timer;
 const fallbackGroups = [{id:'4200',label:'สำรวจภาคสนาม',target:4200},{id:'4900',label:'ติดตามฐานเดิม',target:4900}];
 function teamColors() { return new Map((state?.assignments || []).map(a => [a.team,a.color])); }
-function progressCard(label, count, target, note) {
-  const card = el('article',undefined,'kpi'); card.append(el('h2',label),el('strong',`${count === null ? '—' : number(count)} / ${number(target)}`));
-  const p = el('progress'); p.max = target; p.value = count === null ? 0 : Math.min(count,target); p.setAttribute('aria-label',label); if (count === null) p.hidden = true;
-  card.append(p,el('p',note)); return card;
+function progressCard(label, count, target, note, milestoneStep = 0) {
+  const card = el('article',undefined,`kpi${milestoneStep ? ' milestone-card' : ' month-card'}`);
+  const head = el('div',undefined,'progress-heading');
+  const title = el('div'); title.append(el('h2',label),el('span',count === null ? 'รอข้อมูลจากชีต' : `เก็บแล้ว ${number(count)} ชุด`,'progress-caption'));
+  const total = el('div',undefined,'progress-total'); total.append(el('strong',`${count === null ? '—' : number(count)} / ${number(target)}`),el('span',`เป้าหมายปลายทาง ${number(target)} ชุด`));
+  head.append(title,total);card.append(head);
+  const track = el('div',undefined,'survey-track');
+  track.setAttribute('role','progressbar');track.setAttribute('aria-label',label);track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax',String(target));
+  if(count !== null) track.setAttribute('aria-valuenow',String(Math.min(count,target)));
+  track.setAttribute('aria-valuetext',count === null ? 'ยังไม่มีข้อมูลที่อ่านสำเร็จ' : `เก็บแล้ว ${number(count)} จากเป้าหมาย ${number(target)} ชุด`);
+  const fill=el('div',undefined,'survey-fill');fill.style.width=`${count === null ? 0 : Math.min(100,Math.max(0,count/target*100))}%`;track.append(fill);
+  if(milestoneStep){
+    const scale=el('div',undefined,'milestone-scale');scale.setAttribute('aria-hidden','true');
+    scale.append(el('span','0','scale-start'));
+    for(let value=milestoneStep;value<target;value+=milestoneStep){
+      const reached=count !== null && count>=value;
+      const tick=el('span',undefined,`milestone-tick${reached?' reached':''}`);tick.style.left=`${value/target*100}%`;tick.title=`เป้าย่อยสะสม ${number(value)} ชุด${reached?' · ถึงเป้าแล้ว':''}`;track.append(tick);
+      if(target-value>=milestoneStep*.45){const label=el('span',number(value),'scale-label');label.style.left=`${value/target*100}%`;scale.append(label);}
+    }
+    scale.append(el('span',number(target),'scale-end'));card.append(track,scale);
+  }else card.append(track);
+  card.append(el('p',note)); return card;
 }
 function renderKpis() {
   const out = $('kpis'); out.replaceChildren();
   for (const g of config?.groups || fallbackGroups) {
     const count = state ? state.surveys.filter(s => s.group === g.id).length : null;
-    out.append(progressCard(g.label,count,g.target,state ? 'จำนวนแบบสอบถามในชีต (ยังไม่ใช่ยอดรับรองคุณภาพ)' : 'ยังไม่มีข้อมูลที่อ่านและตรวจรูปแบบสำเร็จ'));
+    const note = g.id === '4200'
+      ? 'ขีดเป้ารายเดือนสะสมทุก 600 ชุด · 7 เดือน รวม 4,200 ชุด'
+      : 'ขีดอ้างอิงสะสมทุก 600 ชุด · แผนติดตามฐานเดิมในชีตคือ 700 ชุดต่อรอบ';
+    out.append(progressCard(g.label,count,g.target,state ? note : `${note} · รอข้อมูลจากชีต`,600));
   }
   const m = config?.monthOne || {target:600}, count = state && m.groupIds ? monthOneCount(state.surveys,m) : null;
   out.append(progressCard('เป้าเดือนที่ 1',count,600,m.startDate && m.endDate ? `${displayDate(m.startDate)} – ${displayDate(m.endDate)} · นับตามวันที่เก็บ` : 'รอยืนยันวันเริ่มโครงการและช่วงเดือนที่ 1 · เป้าแสดงเพื่อวางแผน'));
