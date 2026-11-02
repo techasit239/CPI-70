@@ -1,4 +1,4 @@
-import {readSnapshot, monthOneCount, bangkokToday, HOUSE_TYPES, teamOverview} from './data.js';
+import {readSnapshot, addDays, bangkokToday, HOUSE_TYPES, teamOverview} from './data.js';
 const $ = id => document.getElementById(id);
 const el = (tag, text, cls) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; };
 const number = n => n.toLocaleString('th-TH');
@@ -22,10 +22,10 @@ function progressCard(label, count, target, note, milestoneStep = 0) {
     scale.append(el('span','0','scale-start'));
     for(let value=milestoneStep;value<target;value+=milestoneStep){
       const reached=count !== null && count>=value;
-      const tick=el('span',undefined,`milestone-tick${reached?' reached':''}`);tick.style.left=`${value/target*100}%`;tick.title=`เป้าย่อยสะสม ${number(value)} ชุด${reached?' · ถึงเป้าแล้ว':''}`;track.append(tick);
-      if(target-value>=milestoneStep*.45){const label=el('span',number(value),'scale-label');label.style.left=`${value/target*100}%`;scale.append(label);}
+      const tick=el('span',undefined,`milestone-tick${reached?' reached':''}`);tick.style.left=`${value/target*100}%`;tick.title=`เดือน ${value/milestoneStep} · เป้าสะสม ${number(value)} ชุด${reached?' · ถึงเป้าแล้ว':''}`;track.append(tick);
+      if(target-value>=milestoneStep*.45){const label=el('span',number(value),'scale-label');label.append(el('small',`เดือน ${value/milestoneStep}`));label.style.left=`${value/target*100}%`;scale.append(label);}
     }
-    scale.append(el('span',number(target),'scale-end'));card.append(track,scale);
+    const end=el('span',number(target),'scale-end');end.append(el('small',`เดือน ${target/milestoneStep}`));scale.append(end);card.append(track,scale);
   }else card.append(track);
   card.append(el('p',note)); return card;
 }
@@ -35,11 +35,21 @@ function renderKpis() {
     const count = state ? state.surveys.filter(s => s.group === g.id).length : null;
     const note = g.id === '4200'
       ? 'ขีดเป้ารายเดือนสะสมทุก 600 ชุด · 7 เดือน รวม 4,200 ชุด'
-      : 'ขีดอ้างอิงสะสมทุก 600 ชุด · แผนติดตามฐานเดิมในชีตคือ 700 ชุดต่อรอบ';
-    const card=progressCard(g.label,count,g.target,state ? note : `${note} · รอข้อมูลจากชีต`,600);card.dataset.group=g.id;out.append(card);
+      : 'เป้าโทรติดตาม 700 ชุดต่อเดือน · 7 เดือน รวม 4,900 ชุด';
+    const title=g.id==='4900'?'โทรติดตามฐานเดิม':g.label;
+    const card=progressCard(title,count,g.target,state ? note : `${note} · รอข้อมูลจากชีต`,g.id==='4900'?700:600);card.dataset.group=g.id;out.append(card);
   }
-  const m = config?.monthOne || {target:600}, count = state && m.groupIds ? monthOneCount(state.surveys,m) : null;
-  out.append(progressCard('เป้าเดือนที่ 1',count,600,m.startDate && m.endDate ? `${displayDate(m.startDate)} – ${displayDate(m.endDate)} · นับตามวันที่เก็บ` : 'รอยืนยันวันเริ่มโครงการและช่วงเดือนที่ 1 · เป้าแสดงเพื่อวางแผน'));
+  renderMonthlyTargets(out);
+}
+let selectedTargetMonth=1;
+function renderMonthlyTargets(out){
+  const box=el('article',undefined,'monthly-panel');const head=el('div',undefined,'monthly-heading');head.append(el('div','เป้าหมายการจัดเก็บรายเดือน','monthly-title'));const label=el('label','ดูรอบงาน '),select=el('select');select.id='targetMonth';select.setAttribute('aria-label','เดือนเป้าหมาย');for(let m=1;m<=7;m++)select.add(new Option(`เดือนที่ ${m}`,String(m)));select.value=String(selectedTargetMonth);select.addEventListener('change',e=>{selectedTargetMonth=+e.target.value;renderKpis();});label.append(select);head.append(label);box.append(head);
+  const first=config?.monthOne?.startDate,start=first?addDays(first,(selectedTargetMonth-1)*30):'',end=start?addDays(start,29):'';
+  box.append(el('p',start?`${displayDate(start)} – ${displayDate(end)} · รอบละ 30 วันตามแผน 210 วัน`:'รอยืนยันวันเริ่มโครงการ','monthly-period'));
+  const grid=el('div',undefined,'monthly-grid');for(const [group,title,target]of [['4900','โทรติดตามฐานเดิม',700],['4200','สำรวจภาคสนาม',600]]){
+    const count=state&&start?state.surveys.filter(s=>s.group===group&&s.date>=start&&s.date<=end).length:null;
+    const card=progressCard(title,count,target,count===null?'รอข้อมูลรายเดือน':count>=target?'ถึงเป้าหมายรายเดือนแล้ว':`เหลืออีก ${number(target-count)} ชุดเพื่อถึงเป้ารอบนี้`);card.dataset.group=group;grid.append(card);
+  }box.append(grid);out.append(box);
 }
 function assignmentsFor(p) { return state?.assignments.filter(a => a.province === p) || []; }
 function featureStyle(feature) {
