@@ -1,0 +1,11 @@
+{
+  "assignmentsCsvUrl": "",
+  "surveyCsvUrls": [],
+  "sheetEditUrl": "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/edit",
+  "refreshSeconds": 60,
+  "groups": [
+    { "id": "4200", "label": "สำรวจภาคสนาม", "target": 4200 },
+    { "id": "4900", "label": "ติดตามฐานเดิม", "target": 4900 }
+  ],
+  "monthOne": { "startDate": "", "endDate": "", "groupIds": [], "target": 600 }
+}

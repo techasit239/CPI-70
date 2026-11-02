@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://raw.githubusercontent.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>สนค. | ติดตามการสำรวจภาคสนาม</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header><div><p class="eyebrow">TPSO · FIELDWORK MONITOR</p><h1>ติดตามการสำรวจภาคสนาม</h1><p>ข้อมูลจาก Google Sheets · แก้ไขข้อมูลที่ชีตต้นทาง</p></div><a id="editSheet" hidden target="_blank" rel="noopener noreferrer">เปิด Google Sheets</a></header>
+  <nav aria-label="หน้าหลัก"><button id="mapTab" aria-pressed="true">1. แผนที่และความคืบหน้า</button><button id="timelineTab" aria-pressed="false">2. ปฏิทินลงพื้นที่</button></nav>
+  <main>
+    <div class="sync"><p id="syncStatus" role="status" aria-live="polite">กำลังตรวจการเชื่อมต่อ…</p><button id="refresh">อัปเดตข้อมูล</button></div>
+    <section id="mapPage" aria-label="แผนที่และความคืบหน้า">
+      <div id="kpis" class="kpis"></div>
+      <details class="card"><summary>กรอบเตรียมงานตาม TOR และแผน 5 ภาค</summary><p>แผนที่แสดง 77 จังหวัดเพื่อเลือกดูพื้นที่ ส่วน TOR กำหนดพื้นที่สำรวจ 56 จังหวัดตามที่ สนค. กำหนด รายชื่อจังหวัด ทีม และกำหนดวันจริงจะอ่านจากชีตแผนงาน</p><p>TOR ข้อ 4.3.1–4.3.2 กำหนดส่งข้อมูลเดือนละไม่น้อยกว่า 600 ข้อมูลในแต่ละส่วนของงวดแรก เป้าเดือนที่ 1 บนหน้านี้ติดตามภาคสนาม 600 ชุดตามคำขอ ต้องตั้งวันตัดรอบก่อนเริ่มนับ</p><table><thead><tr><th>ทีมตามกรอบภูมิภาค</th><th>เป้าภาคสนามเบื้องต้น</th></tr></thead><tbody><tr><td>กรุงเทพฯ และปริมณฑล</td><td>695</td></tr><tr><td>ภาคกลาง (รวมตะวันออกและตะวันตก)</td><td>765</td></tr><tr><td>ภาคตะวันออกเฉียงเหนือ</td><td>1,377</td></tr><tr><td>ภาคเหนือ</td><td>757</td></tr><tr><td>ภาคใต้</td><td>606</td></tr></tbody></table><p class="muted">รวม 4,200 ชุด · กรอบจัดสรรเบื้องต้นจากแชตแผนงานเดิม ใช้ประชากรทั้งประเทศ ยังไม่ใช่โควตารายจังหวัดที่ สนค. อนุมัติ และไม่ใช่ผลงานที่เก็บแล้ว</p></details>
+      <div class="layout"><div class="card mapCard"><div class="sectionHead"><h2>พื้นที่รับผิดชอบ 77 จังหวัด</h2><label>จังหวัด <select id="provinceSelect"><option value="">เลือกจังหวัด</option></select></label></div><p id="mapStatus" role="status">กำลังโหลดขอบเขตจังหวัด…</p><div id="map" aria-label="แผนที่ประเทศไทย"></div></div><aside><div class="card"><h2>ทีมภาคสนาม</h2><div id="legend"></div></div><div class="card" id="provinceDetails" aria-live="polite"><h2>รายละเอียดจังหวัด</h2><p>คลิกจังหวัดบนแผนที่ หรือเลือกชื่อจังหวัด</p></div></aside></div>
+    </section>
+    <section id="timelinePage" hidden aria-label="ปฏิทินลงพื้นที่"><div class="card"><div class="sectionHead"><h2>ปฏิทินลงพื้นที่</h2><div class="controls"><button id="prevMonth" aria-label="เดือนก่อนหน้า">←</button><label>เดือน <input id="month" type="month"></label><button id="nextMonth" aria-label="เดือนถัดไป">→</button><label>ทีม <select id="teamFilter"><option value="">ทุกทีม</option></select></label></div></div><p>แสดงช่วงลงพื้นที่และวันครบกำหนดส่งแบบสอบถามภายใน 7 วันหลังเสร็จ · คลิกรายการเพื่อดูจังหวัด</p><div class="calendarScroll"><div id="calendar" class="calendar"></div></div><h3>รายการในเดือนที่เลือก</h3><div id="scheduleList"></div></div></section>
+  </main><footer>ยอดอัปเดตตามรอบการอ่านชีต ไม่ใช่การเชื่อมต่อโดยตรงกับ Zoho Survey</footer>
+</body></html>
