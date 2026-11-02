@@ -1,11 +1,28 @@
 {
-  "assignmentsCsvUrl": "",
-  "surveyCsvUrls": [],
+  "assignmentsCsvUrl": "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/export?format=csv&gid=0",
+  "surveyCsvUrls": [
+    "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/export?format=csv&gid=105"
+  ],
   "sheetEditUrl": "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/edit",
   "refreshSeconds": 60,
   "groups": [
-    { "id": "4200", "label": "สำรวจภาคสนาม", "target": 4200 },
-    { "id": "4900", "label": "ติดตามฐานเดิม", "target": 4900 }
+    {
+      "id": "4200",
+      "label": "สำรวจภาคสนาม",
+      "target": 4200
+    },
+    {
+      "id": "4900",
+      "label": "ติดตามฐานเดิม",
+      "target": 4900
+    }
   ],
-  "monthOne": { "startDate": "", "endDate": "", "groupIds": [], "target": 600 }
+  "monthOne": {
+    "startDate": "2026-12-01",
+    "endDate": "2026-12-30",
+    "groupIds": [
+      "4200"
+    ],
+    "target": 600
+  }
 }
