@@ -28,7 +28,7 @@ function featureStyle(feature) {
 async function initMap() {
   if (!window.L) { $('mapStatus').textContent = 'โหลดแผนที่ไม่ได้ กรุณาใช้รายการเลือกจังหวัด (ข้อมูลส่วนอื่นยังใช้งานได้)'; return; }
   map = L.map('map').setView([13.2,101],5);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:12}).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:12}).addTo(map);
   try {
     const r = await fetch('https://raw.githubusercontent.com/apisit/thailand.json/2c698dfab258ce534cd541a846f94e08c681d1a2/thailandWithName.json',{signal:AbortSignal.timeout(20000)});
     if (!r.ok) throw new Error('โหลดขอบเขตไม่สำเร็จ');
