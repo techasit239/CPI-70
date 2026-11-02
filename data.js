@@ -70,7 +70,9 @@ export function normalizeAssignments(csv, names) {
     if (colors.has(r.team) && colors.get(r.team) !== color) throw new Error(`ทีมเดียวกันต้องใช้สีเดียวกัน: ${r.team}`);
     colors.set(r.team, color);
     const key = JSON.stringify([r.team,p,start,end]); if (keys.has(key)) throw new Error(`แผนงานซ้ำ: ${r.team} / ${p}`); keys.add(key);
-    return { team:r.team, province:p, start, end, completed, color, deadline:addDays(completed || end, 7), plannedDeadline:!completed };
+    const keyed = dateOnly(r.keyed_date || '', true);
+    if (keyed && (!completed || keyed < completed)) throw new Error(`วันคีย์เสร็จต้องไม่ก่อนวันเก็บเสร็จ: ${r.team} / ${p}`);
+    return { team:r.team, province:p, start, end, completed, keyed, color, deadline:addDays(completed || end, 7), plannedDeadline:!completed, demo:r.data_status === 'ข้อมูลทดลอง' };
   });
 }
 export function normalizeSurveys(csvs, names, groups) {
@@ -79,7 +81,7 @@ export function normalizeSurveys(csvs, names, groups) {
     required(csv, ['response_id','team','province','group_id','type','collected_date']);
     for (const r of csv.rows) {
       if (!r.response_id || !r.team || !r.type || !groups.some(g => g.id === r.group_id)) throw new Error('แบบสอบถามต้องมี response_id, team, type และ group_id ที่ตรงการตั้งค่า');
-      const item = { id:r.response_id, team:r.team, province:province(r.province, names), group:r.group_id, type:r.type, date:dateOnly(r.collected_date) };
+      const item = { id:r.response_id, team:r.team, province:province(r.province, names), group:r.group_id, type:r.type, date:dateOnly(r.collected_date), demo:r.data_status === 'ข้อมูลทดลอง' || r.response_id.startsWith('DEMO-') };
       // Zoho response IDs may be unique only within one survey, hence group + ID.
       const key = JSON.stringify([item.group,item.id]);
       if (unique.has(key) && JSON.stringify(unique.get(key)) !== JSON.stringify(item)) throw new Error(`response_id ซ้ำแต่ข้อมูลขัดแย้ง: ${item.id}`);
@@ -93,7 +95,24 @@ export function snapshot(assignmentsCsv, surveyCsvs, names, config) {
   for (const s of surveys) if (!assignments.some(a => a.province === s.province && a.team === s.team)) throw new Error(`แบบสอบถามไม่ตรงทีม/จังหวัดในชีตแผนงาน: ${s.team} / ${s.province}`);
   const teamsByProvince = new Map();
   for (const a of assignments) { if (!teamsByProvince.has(a.province)) teamsByProvince.set(a.province,new Set()); teamsByProvince.get(a.province).add(a.team); }
-  return { assignments, surveys, shared: [...teamsByProvince].filter(([,teams]) => teams.size > 1).map(([p]) => p) };
+  const hasDemo = surveys.some(s=>s.demo) || assignments.some(a=>a.demo);
+  if(surveys.some(s=>s.demo) && surveys.some(s=>!s.demo)) throw new Error('พบข้อมูลทดลองปนกับข้อมูลจริง กรุณาแยกชีตก่อนสรุปยอด');
+  return { assignments, surveys, hasDemo, shared: [...teamsByProvince].filter(([,teams]) => teams.size > 1).map(([p]) => p) };
+}
+export const HOUSE_TYPES = ['บ้านเดี่ยว','ห้องชุด','ทาวน์เฮ้าส์/ทาวน์โฮม/บ้านแฝด','เรือนแถว/ห้องแบ่งเช่า','ตึกแถว/อาคารพาณิชย์'];
+export function canonicalHouseType(type){
+  if(HOUSE_TYPES.includes(type))return type;
+  const aliases={'คอนโด':'ห้องชุด','คอนโดมิเนียม':'ห้องชุด','อพาร์ตเมนต์':'ห้องชุด','ทาวน์เฮ้าส์':HOUSE_TYPES[2],'ทาวน์โฮม':HOUSE_TYPES[2],'บ้านแฝด':HOUSE_TYPES[2],'เรือนแถว':HOUSE_TYPES[3],'ห้องแบ่งเช่า':HOUSE_TYPES[3],'ตึกแถว':HOUSE_TYPES[4],'อาคารพาณิชย์':HOUSE_TYPES[4]};
+  return aliases[type] || null;
+}
+export function teamOverview(state, team='', group=''){
+  const assignments=state.assignments.filter(a=>!team||a.team===team),surveys=state.surveys.filter(s=>(!team||s.team===team)&&(!group||s.group===group));
+  const provinces=[...new Set(assignments.map(a=>a.province))].sort((a,b)=>a.localeCompare(b,'th'));
+  return {total:surveys.length,existing:surveys.filter(s=>s.group==='4900').length,field:surveys.filter(s=>s.group==='4200').length,rows:provinces.map(province=>{
+    const jobs=assignments.filter(a=>a.province===province),records=surveys.filter(s=>s.province===province);
+    const latest=key=>jobs.map(a=>a[key]).filter(Boolean).sort().at(-1)||'';
+    return {province,total:records.length,counts:HOUSE_TYPES.map(type=>records.filter(s=>canonicalHouseType(s.type)===type).length),other:records.filter(s=>!canonicalHouseType(s.type)).length,start:jobs.map(a=>a.start).sort()[0],end:latest('end'),completed:jobs.every(a=>a.completed)?latest('completed'):'',keyed:jobs.every(a=>a.keyed)?latest('keyed'):'',deadline:latest('deadline'),planned:jobs.some(a=>a.plannedDeadline),rounds:jobs.length};
+  })};
 }
 export function monthOneCount(surveys, m) { if (!m.startDate || !m.endDate || !m.groupIds.length) return null; return surveys.filter(s => m.groupIds.includes(s.group) && s.date >= m.startDate && s.date <= m.endDate).length; }
 export async function readSnapshot(config, names, fetcher = fetch) {

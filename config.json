@@ -1,7 +1,7 @@
 {
-  "assignmentsCsvUrl": "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/export?format=csv&gid=0",
+  "assignmentsCsvUrl": "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/export?format=csv&gid=107",
   "surveyCsvUrls": [
-    "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/export?format=csv&gid=105"
+    "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/export?format=csv&gid=106"
   ],
   "sheetEditUrl": "https://docs.google.com/spreadsheets/d/1dz-enEv9mYElM8lwGatv9lhiGNrummQeF5em-dK0Qhc/edit",
   "refreshSeconds": 60,
